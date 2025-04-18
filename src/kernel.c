@@ -1,13 +1,15 @@
-#include "screen.h"
-#include "keyboard.h"
-
 void kmain(void)
 {
-    clear_screen();
-    print_string("Welcome to MyOS!\n");
+    const char *text = "Hello from C kernel!";
+    char *video = (char *)0xb8000;
+    for (int i = 0; text[i] != '\0'; i++)
+    {
+        video[i * 2] = text[i];
+        video[i * 2 + 1] = 0x07;
+    }
+
     while (1)
     {
-        char c = get_key(); // blocking read
-        print_char(c);
+        __asm__ __volatile__("hlt");
     }
 }

@@ -1,31 +1,29 @@
 @echo off
-REM Set up cross-compiler prefix
-set PREFIX=i686-elf-
+setlocal
+
 set BUILD=build
-set SRC=src
+set ISO=%BUILD%\os.iso
 
-REM Clean
-if exist %BUILD% rd /s /q %BUILD%
-mkdir %BUILD%
+REM Create build and ISO directories
+if not exist %BUILD% mkdir %BUILD%
+if not exist %BUILD%\isodir\boot\grub mkdir %BUILD%\isodir\boot\grub
 
-REM 1) Assemble bootloader stub
-%PREFIX%gcc -m32 -ffreestanding -c %SRC%\boot.s -o %BUILD%\boot.o
+REM 1. Assemble boot.asm
+nasm -f elf -o %BUILD%\boot.o src\boot.asm
 
-REM 2) Compile kernel
-%PREFIX%gcc -m32 -ffreestanding -O2 -c %SRC%\kernel.c -o %BUILD%\kernel.o
+REM 2. Compile kernel.c
+i686-elf-gcc -ffreestanding -m32 -c src\kernel.c -o %BUILD%\kernel.o
 
-REM 3) Link into flat binary
-%PREFIX%ld -m elf_i386 -Ttext 0x1000 --oformat binary %BUILD%\boot.o %BUILD%\kernel.o -o %BUILD%\kernel.bin
+REM 3. Link with linker.ld
+i686-elf-ld -T linker.ld -o %BUILD%\kernel.bin %BUILD%\boot.o %BUILD%\kernel.o
 
-REM 4) Copy files for ISO
-if exist iso rd /s /q iso
-mkdir iso
-mkdir iso\boot
-mkdir iso\boot\grub
-copy %BUILD%\kernel.bin iso\boot\kernel.bin >nul
-copy boot\grub.cfg    iso\boot\grub\grub.cfg
+REM 4. Copy kernel and GRUB config
+copy %BUILD%\kernel.bin %BUILD%\isodir\boot\kernel.bin >nul
+copy boot\grub.cfg %BUILD%\isodir\boot\grub\grub.cfg >nul
 
-REM 5) Create ISO with GRUB
-grub-mkrescue -o os.iso iso
+REM 5. Create ISO using grub-mkrescue
+grub-mkrescue -o %ISO% %BUILD%\isodir
 
-echo Done. Generated os.iso
+echo.
+echo Done! ISO image: %ISO%
+pause
